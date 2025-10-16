@@ -1,0 +1,49 @@
+version: 2
+
+sources:
+  - name: bronze
+    database: LOCEATS_DB 
+    schema: BRONZE
+    description: "Raw data ingested from various APIs"
+    tables:
+      - name: bronze_yelp_restaurants
+        description: "Raw Yelp restaurant data"
+        columns:
+          - name: restaurant_id
+            description: "Unique restaurant identifier from Yelp"
+            tests:
+              - unique
+              - not_null
+          - name: name
+            description: "Restaurant name"
+            tests:
+              - not_null
+          - name: latitude
+            tests:
+              - not_null
+          - name: longitude  
+            tests:
+              - not_null
+              
+      - name: bronze_health_inspections
+        description: "Raw Boston health inspection data"
+        freshness:
+          warn_after: {count: 7, period: day}
+          error_after: {count: 14, period: day}
+        loaded_at_field: resultdttm
+        
+      - name: bronze_mbta_stops
+        description: "Raw MBTA transit stop data"
+        columns:
+          - name: stop_id
+            tests:
+              - unique
+              - not_null
+        
+      - name: bronze_mbta_routes
+        description: "Raw MBTA route data"
+        columns:
+          - name: route_id
+            tests:
+              - unique
+              - not_null
