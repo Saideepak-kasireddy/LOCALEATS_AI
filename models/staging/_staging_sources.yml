@@ -2,8 +2,8 @@ version: 2
 
 sources:
   - name: bronze
-    database: LOCEATS_DB 
-    schema: BRONZE
+    database: LOCALEATS_DB 
+    schema: LOCALEATS_SCHEMA
     description: "Raw data ingested from various APIs"
     tables:
       - name: bronze_yelp_restaurants
@@ -31,6 +31,28 @@ sources:
           warn_after: {count: 7, period: day}
           error_after: {count: 14, period: day}
         loaded_at_field: resultdttm
+        
+      - name: bronze_sanitary_inspections_cambridge
+        description: "Raw Cambridge sanitary inspection data"
+        columns:
+          - name: case_number
+            description: "Unique case identifier"
+            tests:
+              - not_null
+          - name: establishment_name
+            description: "Restaurant/establishment name"
+            tests:
+              - not_null
+          - name: latitude
+            tests:
+              - not_null
+          - name: longitude
+            tests:
+              - not_null
+        freshness:
+          warn_after: {count: 7, period: day}
+          error_after: {count: 14, period: day}
+        loaded_at_field: load_timestamp
         
       - name: bronze_mbta_stops
         description: "Raw MBTA transit stop data"
