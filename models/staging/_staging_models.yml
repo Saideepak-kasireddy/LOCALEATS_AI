@@ -80,3 +80,46 @@ models:
         tests:
           - unique
           - not_null
+
+  - name: stg_google_places
+    description: "Cleaned Google Places enrichment data with dietary, accessibility, and service options"
+    columns:
+      - name: restaurant_id
+        description: "Foreign key to restaurants"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_yelp_restaurants')
+              field: restaurant_id
+      
+      - name: google_place_id
+        description: "Unique Google Places identifier"
+        tests:
+          - unique
+          - not_null
+      
+      - name: business_status
+        description: "Operating status from Google"
+        tests:
+          - accepted_values:
+              values: ['OPERATIONAL', 'CLOSED_TEMPORARILY', 'CLOSED_PERMANENTLY', null]
+      
+      - name: is_operational
+        description: "Boolean flag for operational status"
+        tests:
+          - not_null
+      
+      - name: serves_vegetarian
+        description: "Boolean indicating vegetarian food availability"
+        tests:
+          - not_null
+      
+      - name: good_for_groups
+        description: "Boolean indicating suitability for groups"
+        tests:
+          - not_null
+      
+      - name: is_wheelchair_accessible
+        description: "Comprehensive accessibility flag"
+        tests:
+          - not_null

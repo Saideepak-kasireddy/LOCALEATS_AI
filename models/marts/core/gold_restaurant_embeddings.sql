@@ -33,6 +33,21 @@ SELECT
     health_risk_level,
     nearest_stop_distance_m,
     
+    -- Google Places metadata for filtering
+    serves_vegetarian,
+    serves_breakfast,
+    serves_lunch,
+    serves_dinner,
+    reservable,
+    takeout,
+    delivery,
+    outdoor_seating,
+    is_wheelchair_accessible,
+    good_for_groups,
+    good_for_children,
+    is_currently_open,
+    opening_hours_text,
+    
     CURRENT_TIMESTAMP() as embedding_created_at
 
 FROM restaurant_master

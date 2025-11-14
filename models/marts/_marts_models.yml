@@ -41,6 +41,31 @@ models:
         tests:
           - accepted_values:
               values: ['HIGHLY_RECOMMENDED', 'RECOMMENDED', 'AVERAGE', 'BELOW_AVERAGE']
+      - name: is_currently_open
+        description: "Combined flag: operational in Google Places AND not closed in Yelp"
+        tests:
+          - not_null
+      
+      - name: serves_vegetarian
+        description: "Whether restaurant serves vegetarian food (from Google Places)"
+      
+      - name: reservable
+        description: "Whether restaurant accepts reservations"
+      
+      - name: takeout
+        description: "Whether takeout is available"
+      
+      - name: delivery
+        description: "Whether delivery is available"
+      
+      - name: is_wheelchair_accessible
+        description: "Comprehensive accessibility flag from Google Places"
+      
+      - name: good_for_groups
+        description: "Whether suitable for group dining"
+      
+      - name: opening_hours_text
+        description: "Full weekly hours schedule"
 
   - name: gold_restaurant_embeddings
     description: "Vector embeddings for semantic restaurant search"

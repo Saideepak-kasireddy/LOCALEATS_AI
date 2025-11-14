@@ -69,3 +69,32 @@ sources:
             tests:
               - unique
               - not_null
+              
+      - name: bronze_google_places_enrichment
+        description: Google Places API enrichment data
+        columns:
+          - name: restaurant_id
+            description: Foreign key linking to Yelp restaurant
+            tests:
+              - not_null
+          
+          - name: google_place_id
+            description: Unique Google Places identifier
+          
+          - name: business_status
+            description: Operating status (OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY)
+          
+          - name: serves_vegetarian
+            description: Whether restaurant serves vegetarian food
+          
+          - name: reservable
+            description: Whether reservations are accepted
+          
+          - name: wheelchair_accessible_entrance
+            description: Wheelchair accessible entrance available
+          
+          - name: opening_hours_text
+            description: Full text of opening hours by day
+          
+          - name: enriched_at
+            description: Timestamp when data was enriched from Google Places

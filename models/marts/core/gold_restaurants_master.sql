@@ -1,4 +1,4 @@
--- models/marts/gold_restaurants_master.sql
+-- models/marts/core/gold_restaurants_master.sql
 {{
     config(
         materialized='table',
@@ -22,21 +22,30 @@ inspections AS (
 transit AS (
     SELECT
         restaurant_id,
-        MIN(distance_meters) as nearest_stop_distance_m,
-        MIN(walking_time_minutes) as nearest_stop_walk_time_min,
-        FIRST_VALUE(stop_name) OVER (
-            PARTITION BY restaurant_id 
-            ORDER BY distance_meters
-        ) as nearest_stop_name,
-        COUNT(DISTINCT stop_id) as nearby_stops_count,
-        COUNT(DISTINCT CASE WHEN is_wheelchair_accessible THEN stop_id END) as accessible_stops_count
-    FROM {{ ref('int_restaurant_transit_access') }}
-    WHERE proximity_rank <= 10
-    GROUP BY restaurant_id, stop_name, distance_meters
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY restaurant_id ORDER BY distance_meters) = 1
+        nearest_stop_distance_m,
+        nearest_stop_walk_time_min,
+        nearest_stop_name,
+        nearby_stops_count,
+        accessible_stops_count
+    FROM (
+        SELECT
+            restaurant_id,
+            distance_meters as nearest_stop_distance_m,
+            walking_time_minutes as nearest_stop_walk_time_min,
+            stop_name as nearest_stop_name,
+            COUNT(DISTINCT stop_id) OVER (PARTITION BY restaurant_id) as nearby_stops_count,
+            COUNT(DISTINCT CASE WHEN is_wheelchair_accessible THEN stop_id END) OVER (PARTITION BY restaurant_id) as accessible_stops_count,
+            ROW_NUMBER() OVER (PARTITION BY restaurant_id ORDER BY distance_meters) as rn
+        FROM {{ ref('int_restaurant_transit_access') }}
+        WHERE proximity_rank <= 10
+    )
+    WHERE rn = 1
+),
+google_places AS (
+    SELECT * FROM {{ ref('stg_google_places') }}
 ),
 
--- Create rich text descriptions for embedding
+-- Create rich text descriptions for embedding - now including Google Places attributes
 restaurant_descriptions AS (
     SELECT
         r.restaurant_id,
@@ -65,12 +74,21 @@ restaurant_descriptions AS (
                 WHEN t.nearest_stop_distance_m <= 200 THEN 'Very close to public transit. '
                 WHEN t.nearest_stop_distance_m <= 500 THEN 'Near public transit. '
                 ELSE ''
-            END
+            END,
+            -- Add Google Places attributes to description
+            CASE WHEN g.serves_vegetarian THEN 'Vegetarian-friendly. ' ELSE '' END,
+            CASE WHEN g.reservable THEN 'Accepts reservations. ' ELSE '' END,
+            CASE WHEN g.takeout THEN 'Takeout available. ' ELSE '' END,
+            CASE WHEN g.delivery THEN 'Delivery available. ' ELSE '' END,
+            CASE WHEN g.outdoor_seating THEN 'Outdoor seating. ' ELSE '' END,
+            CASE WHEN g.good_for_groups THEN 'Good for groups. ' ELSE '' END,
+            CASE WHEN g.is_wheelchair_accessible THEN 'Wheelchair accessible. ' ELSE '' END
         ) AS search_description
     FROM restaurants r
     LEFT JOIN scores s ON r.restaurant_id = s.restaurant_id
     LEFT JOIN inspections i ON r.restaurant_id = i.restaurant_id
     LEFT JOIN transit t ON r.restaurant_id = t.restaurant_id
+    LEFT JOIN google_places g ON r.restaurant_id = g.restaurant_id
 )
 
 SELECT
@@ -117,6 +135,9 @@ SELECT
     i.health_risk_level,
     i.days_since_last_inspection,
     i.latest_inspection_date,
+    i.total_violation_score,
+    i.unique_violation_types,
+    i.recent_inspection_count,
     
     -- Transit Details
     t.nearest_stop_name,
@@ -125,14 +146,62 @@ SELECT
     t.nearby_stops_count,
     t.accessible_stops_count,
     
+    -- Google Places Enrichment
+    g.google_place_id,
+    g.business_status,
+    g.is_operational,
+    
+    -- Hours & Availability
+    g.opening_hours_text,
+    g.open_now,
+    
+    -- Dietary Options
+    g.serves_vegetarian,
+    g.serves_breakfast,
+    g.serves_lunch,
+    g.serves_dinner,
+    g.serves_coffee,
+    g.serves_dessert,
+    g.serves_beer,
+    g.serves_wine,
+    
+    -- Service Options
+    COALESCE(g.dine_in, TRUE) as dine_in,  -- Default TRUE if unknown
+    g.takeout,
+    g.delivery,
+    g.reservable,
+    g.outdoor_seating,
+    
+    -- Accessibility Details
+    g.wheelchair_accessible_entrance,
+    g.wheelchair_accessible_parking,
+    g.wheelchair_accessible_restroom,
+    g.wheelchair_accessible_seating,
+    g.is_wheelchair_accessible,
+    
+    -- Group & Family
+    g.good_for_children,
+    g.good_for_groups,
+    g.allows_dogs,
+    g.live_music,
+    
+    -- Combined Operational Status
+    CASE 
+        WHEN g.is_operational = FALSE THEN FALSE
+        WHEN r.is_closed = TRUE THEN FALSE
+        ELSE TRUE
+    END as is_currently_open,
+    
     -- Semantic Search Fields
     d.search_description,
     
     -- Metadata
-    CURRENT_TIMESTAMP() as gold_created_at
+    CURRENT_TIMESTAMP() as gold_created_at,
+    g.enriched_at as google_enriched_at
     
 FROM restaurants r
 LEFT JOIN scores s ON r.restaurant_id = s.restaurant_id
 LEFT JOIN inspections i ON r.restaurant_id = i.restaurant_id
 LEFT JOIN transit t ON r.restaurant_id = t.restaurant_id
+LEFT JOIN google_places g ON r.restaurant_id = g.restaurant_id
 LEFT JOIN restaurant_descriptions d ON r.restaurant_id = d.restaurant_id
