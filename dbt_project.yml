@@ -1,0 +1,37 @@
+name: 'localeats_ai'
+version: '1.0.0'
+config-version: 2
+
+profile: 'localeats_ai'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["data"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Update vars
+vars:
+  source_database: LOCEATS_DB 
+  target_database: LOCEATS_DB
+  
+models:
+  localeats_ai:
+    staging:
+      +materialized: view
+      +schema: staging
+      +database: LOCEATS_DB  # Explicitly set database
+    intermediate:
+      +materialized: table
+      +schema: intermediate
+      +database: LOCEATS_DB
+    marts:
+      +materialized: table
+      +schema: marts
+      +database: LOCEATS_DB
